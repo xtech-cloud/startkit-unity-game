@@ -7,11 +7,15 @@ using XTC.Logger;
 
 public class RuntimeMVCS : RootMono
 {
+    public XRProxy proxyXR;
+
     private RuntimeMT runtimetMT {get;set;}
 
     void Awake()
     {
         Debug.Log("---------------  Awake ------------------------");
+
+        proxyXR.DoAwake();
 
         GameObject objMT = new GameObject("_MT_");
         runtimetMT = objMT.AddComponent<RuntimeMT>();
@@ -43,24 +47,33 @@ public class RuntimeMVCS : RootMono
     void OnEnable()
     {
         Debug.Log("---------------  OnEnable ------------------------");
+        proxyXR.DoOnEnable();
         setup();
     }
 
     void Start()
     {
         Debug.Log("---------------  Start ------------------------");
+        proxyXR.DoStart();
         runtimetMT.FecthUUID();
+    }
+
+    void Update()
+    {
+        proxyXR.DoUpdate();
     }
 
     void OnDisable()
     {
         Debug.Log("---------------  OnDisable ------------------------");
+        proxyXR.DoOnDisable();
         dismantle();
     }
 
     void OnDestroy()
     {
         Debug.Log("---------------  OnDestroy ------------------------");
+        proxyXR.DoOnDestroy();
 
         //framework.modelCenter.Cancel(SampleModel.NAME);
         //framework.viewCenter.Cancel(SampleView.NAME);
