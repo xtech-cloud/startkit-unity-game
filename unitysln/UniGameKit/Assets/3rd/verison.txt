@@ -1,0 +1,6 @@
+UniAny : 1.1
+UniError : 1.2
+UniLogger : 1.0.0
+UniMVCS : 1.3
+UniSimpleJSON: 1.0
+UniTranslator-v1.1 : 1.1
