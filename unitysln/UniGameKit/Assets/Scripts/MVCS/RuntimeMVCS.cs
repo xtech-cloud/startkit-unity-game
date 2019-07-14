@@ -8,6 +8,7 @@ using XTC.Text;
 public class RuntimeMVCS : RootMono
 {
     public XRProxy proxyXR;
+    private LuaProxy proxyLua;
 
     private RuntimeMT runtimetMT { get; set; }
     private BootloaderBatchController controllerBootloader {get;set;}
@@ -16,6 +17,11 @@ public class RuntimeMVCS : RootMono
     void Awake()
     {
         Debug.Log("---------------  Awake ------------------------");
+        
+        proxyLua = new LuaProxy();
+        proxyLua.AddSearchPath(Application.persistentDataPath);
+        string lua = proxyLua.ReadFile(System.IO.Path.Combine(Application.streamingAssetsPath, "root.lua"));
+        proxyLua.UseRootCode(lua);
 
         proxyXR.DoAwake();
 
@@ -39,6 +45,8 @@ public class RuntimeMVCS : RootMono
         framework.controllerCenter.Register(BootloaderBatchController.NAME, controllerBootloader);
         modelBootloader = new BootloaderModel();
         framework.modelCenter.Register(BootloaderModel.NAME, modelBootloader);
+
+        proxyLua.DoAwake();
     }
 
     void OnEnable()
@@ -46,6 +54,7 @@ public class RuntimeMVCS : RootMono
         Debug.Log("---------------  OnEnable ------------------------");
         proxyXR.DoOnEnable();
         setup();
+        proxyLua.DoOnEnable();
     }
 
     void Start()
@@ -55,17 +64,20 @@ public class RuntimeMVCS : RootMono
 
         mergeLanguageFiles();
 
+        proxyLua.DoStart();
         executeBootloader();
     }
 
     void Update()
     {
         proxyXR.DoUpdate();
+        proxyLua.DoUpdate();
     }
 
     void OnDisable()
     {
         Debug.Log("---------------  OnDisable ------------------------");
+        proxyLua.DoOnDisable();
         proxyXR.DoOnDisable();
         dismantle();
     }
@@ -73,6 +85,7 @@ public class RuntimeMVCS : RootMono
     void OnDestroy()
     {
         Debug.Log("---------------  OnDestroy ------------------------");
+        proxyLua.DoOnDestroy();
         proxyXR.DoOnDestroy();
 
         //framework.modelCenter.Cancel(SampleModel.NAME);
@@ -153,7 +166,7 @@ public class RuntimeMVCS : RootMono
 
     private void runRom()
     {
-
+        proxyLua.Execute("print('run rom')");
     }
 
     private void mergeLanguageFiles()
