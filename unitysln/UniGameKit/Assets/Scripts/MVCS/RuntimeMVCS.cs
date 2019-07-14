@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using UnityEngine;
 using XTC.MVCS;
-using XTC.Types;
 using XTC.Logger;
+using XTC.Text;
 
 public class RuntimeMVCS : RootMono
 {
     public XRProxy proxyXR;
 
-    private RuntimeMT runtimetMT {get;set;}
+    private RuntimeMT runtimetMT { get; set; }
+    private BootloaderBatchController controllerBootloader {get;set;}
+    private BootloaderModel modelBootloader {get;set;}
 
     void Awake()
     {
@@ -21,7 +23,7 @@ public class RuntimeMVCS : RootMono
         runtimetMT = objMT.AddComponent<RuntimeMT>();
         runtimetMT.mvcs = this;
 
-        foreach(Transform child in this.transform.Find("UIFacades"))
+        foreach (Transform child in this.transform.Find("UIFacades"))
         {
             UIFacade facade = child.GetComponent<UIFacade>();
             facade.Register();
@@ -29,19 +31,14 @@ public class RuntimeMVCS : RootMono
 
         initialize();
 
-        //SampleModel model = new SampleModel();
-        //SampleView view = new SampleView();
-        //SampleController controller = new SampleController();
-        //SampleService service = new SampleService();
-
-        //service.domain = "http://127.0.0.1";
-        //service.MockProcessor = this.mockProcessor;
-        //service.useMock = true;
-
-        ///framework.modelCenter.Register(SampleModel.NAME, model);
-        //framework.viewCenter.Register(SampleView.NAME, view);
-        //framework.controllerCenter.Register(SampleController.NAME, controller);
-        //framework.serviceCenter.Register(SampleService.NAME, service);
+        // bootloader
+        BootloaderView viewBootloader = new BootloaderView();
+        framework.viewCenter.Register(BootloaderView.NAME, viewBootloader);
+        controllerBootloader = new BootloaderBatchController();
+        controllerBootloader.onFinish = runRom;
+        framework.controllerCenter.Register(BootloaderBatchController.NAME, controllerBootloader);
+        modelBootloader = new BootloaderModel();
+        framework.modelCenter.Register(BootloaderModel.NAME, modelBootloader);
     }
 
     void OnEnable()
@@ -55,7 +52,10 @@ public class RuntimeMVCS : RootMono
     {
         Debug.Log("---------------  Start ------------------------");
         proxyXR.DoStart();
-        runtimetMT.FecthUUID();
+
+        mergeLanguageFiles();
+
+        executeBootloader();
     }
 
     void Update()
@@ -80,7 +80,7 @@ public class RuntimeMVCS : RootMono
         //framework.controllerCenter.Cancel(SampleController.NAME);
         //framework.serviceCenter.Cancel(SampleService.NAME);
 
-        foreach(Transform child in this.transform.Find("UIFacades"))
+        foreach (Transform child in this.transform.Find("UIFacades"))
         {
             UIFacade facade = child.GetComponent<UIFacade>();
             facade.Cancel();
@@ -92,7 +92,82 @@ public class RuntimeMVCS : RootMono
     public void HandleUUID(string _uuid)
     {
         this.LogDebug("handle uuid: [{0}]", _uuid);
-        RuntimeUIFacade facade = (UIFacade.Find(RuntimeUIFacade.NAME) as RuntimeUIFacade);
+        controllerBootloader.FinishCurrentStep();
     }
-   
+
+    private void executeBootloader()
+    {
+        List<BootloaderModel.Step> steps = new List<BootloaderModel.Step>();
+        // fetch uuid
+        {
+            BootloaderModel.Step step = new BootloaderModel.Step();
+            step.name = Constant.BootloaderStep.Fetch;
+            step.length = 1;
+            step.tip = "bootloader_step_fetch";
+            step.onExecute = () =>
+            {
+                runtimetMT.FecthUUID();
+            };
+            steps.Add(step);
+        }
+
+        // load rom
+        {
+            BootloaderModel.Step step = new BootloaderModel.Step();
+            step.name = Constant.BootloaderStep.Load;
+            step.length = 10;
+            step.tip = "bootloader_step_load";
+            step.onExecute = () =>
+            {
+                this.StartCoroutine(load());
+            };
+            steps.Add(step);
+        }
+
+        // run rom
+        {
+            BootloaderModel.Step step = new BootloaderModel.Step();
+            step.name = Constant.BootloaderStep.Run;
+            step.length = 1;
+            step.tip = "bootloader_step_run";
+            step.onExecute = () =>
+            {
+                if (XRProxy.VRMode.OFF == proxyXR.modeVR)
+                    Camera.main.clearFlags = CameraClearFlags.Skybox;
+                else
+                    proxyXR.ResetCameraClearFlags();
+                controllerBootloader.FinishCurrentStep();
+            };
+            steps.Add(step);
+        }
+
+        modelBootloader.SaveSteps(steps);
+        controllerBootloader.Execute();
+    }
+
+    private IEnumerator load()
+    {
+        yield return new WaitForSeconds(3);
+        controllerBootloader.FinishCurrentStep();
+    }
+
+    private void runRom()
+    {
+
+    }
+
+    private void mergeLanguageFiles()
+    {
+        SystemLanguage systemLanguage =  Application.systemLanguage;
+        string defaultLanguage = "zh_CN";
+        if(systemLanguage == SystemLanguage.English)
+            defaultLanguage = "en_US";
+
+        string language = PlayerPrefs.GetString(Constant.CustomSettings.Language, defaultLanguage);
+		Translator.language = language;
+
+        Translator.MergeFromResource("Translator/UI", true);
+    }
+
+
 }

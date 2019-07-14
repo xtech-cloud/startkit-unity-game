@@ -1,0 +1,32 @@
+[
+    {
+        "text":"bootloader_step_fetch",
+        "values":{
+            "zh_CN":"正在获取信息"   
+        }
+    },
+    {
+        "text":"bootloader_step_download",
+        "values":{
+            "zh_CN":"正在下载数据包"   
+        }
+    },
+    {
+        "text":"bootloader_step_decompress",
+        "values":{
+            "zh_CN":"正在解压数据包"   
+        }
+    },
+    {
+        "text":"bootloader_step_parse",
+        "values":{
+            "zh_CN":"正在解析数据"   
+        }
+    },
+    {
+        "text":"bootloader_step_parse",
+        "values":{
+            "zh_CN":"正在加载数据"   
+        }
+    }
+]

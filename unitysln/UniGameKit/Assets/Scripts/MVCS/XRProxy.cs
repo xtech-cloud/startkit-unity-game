@@ -27,6 +27,8 @@ public class XRProxy : MonoBehaviour
 
 	private IXR xr {get;set;}
 
+	private Dictionary<int, CameraClearFlags> cameraClearFlags = new Dictionary<int, CameraClearFlags>();
+
 
 	public void DoAwake()
 	{
@@ -61,9 +63,11 @@ public class XRProxy : MonoBehaviour
 		XPointerInputModule.Pointer.overridePointerCamera = xr.camera.GetComponent<Camera>();
 
 		// switch camera use solid color
+		cameraClearFlags.Clear();
 		Camera[] xrCameras = xr.camera.GetComponentsInChildren<Camera>();
 		foreach(Camera camera in xrCameras)
 		{
+			cameraClearFlags[camera.gameObject.GetInstanceID()] = camera.clearFlags;
 			camera.backgroundColor = cameraColor;
 			camera.clearFlags = CameraClearFlags.SolidColor;
 		}
@@ -101,6 +105,18 @@ public class XRProxy : MonoBehaviour
 		if(modeVR == VRMode.OFF)
 			return;
 		Engine.Release();
+	}
+
+	public void ResetCameraClearFlags()
+	{
+		// switch camera use solid color
+		Camera[] xrCameras = xr.camera.GetComponentsInChildren<Camera>();
+		foreach(Camera camera in xrCameras)
+		{
+			if(!cameraClearFlags.ContainsKey(camera.gameObject.GetInstanceID()))
+				continue;
+			camera.clearFlags = cameraClearFlags[camera.gameObject.GetInstanceID()];
+		}
 	}
 
 }

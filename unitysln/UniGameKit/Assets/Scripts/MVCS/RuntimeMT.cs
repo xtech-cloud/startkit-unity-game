@@ -14,10 +14,12 @@ public class RuntimeMT : MonoBehaviour
 
 	public void FecthUUID()
 	{
-		#if UNITY_WEBGL
-		string uuid = QueryUUID();
-		this.LogDebug("uuid is {0}", uuid);
-		HandleUUID(uuid);
+		#if UNITY_EDITOR
+			HandleUUID("00000000");
+		#elif UNITY_WEBGL
+			string uuid = QueryUUID();
+			this.LogDebug("uuid is {0}", uuid);
+			HandleUUID(uuid);
 		#endif
 	}
 
