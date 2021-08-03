@@ -1,51 +1,59 @@
-﻿using System.Collections;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using XTC.MVCS;
+using XTC.oelMVCS;
 using XTC.Logger;
 using XTC.Text;
 
-public class RuntimeMVCS : RootMono
+public class RuntimeMVCS : MonoBehaviour
 {
     public XRProxy proxyXR;
     private LuaProxy proxyLua;
 
-    private RuntimeMT runtimetMT { get; set; }
-    private BootloaderBatchController controllerBootloader {get;set;}
-    private BootloaderModel modelBootloader {get;set;}
+    private RuntimeMT runtimetMT
+    {
+        get;
+        set;
+    }
+    private BootloaderModel modelBootloader
+    {
+        get;
+        set;
+    }
+
+    private Framework framework_
+    {
+        get;
+        set;
+    }
 
     void Awake()
     {
         Debug.Log("---------------  Awake ------------------------");
-        
-        proxyLua = new LuaProxy();
-        proxyLua.AddSearchPath(Application.persistentDataPath);
-        string lua = proxyLua.ReadFile(System.IO.Path.Combine(Application.streamingAssetsPath, "root.lua"));
-        proxyLua.UseRootCode(lua);
-
-        proxyXR.DoAwake();
 
         GameObject objMT = new GameObject("_MT_");
         runtimetMT = objMT.AddComponent<RuntimeMT>();
         runtimetMT.mvcs = this;
 
-        foreach (Transform child in this.transform.Find("UIFacades"))
-        {
-            UIFacade facade = child.GetComponent<UIFacade>();
-            facade.Register();
-        }
+        Debug.Log("############# XR-Proxy");
+        proxyXR.DoAwake();
 
-        initialize();
+        Debug.Log("############# MVCS");
+        UnityLogger logger = new UnityLogger();
+        logger.setLevel(LogLevel.ALL);
+        framework_ = new Framework();
+        framework_.setLogger(logger);
+        framework_.Initialize();
+        registerMVCS();
 
-        // bootloader
-        BootloaderView viewBootloader = new BootloaderView();
-        framework.viewCenter.Register(BootloaderView.NAME, viewBootloader);
-        controllerBootloader = new BootloaderBatchController();
-        controllerBootloader.onFinish = runRom;
-        framework.controllerCenter.Register(BootloaderBatchController.NAME, controllerBootloader);
-        modelBootloader = new BootloaderModel();
-        framework.modelCenter.Register(BootloaderModel.NAME, modelBootloader);
 
+        Debug.Log("############# Lua-Proxy");
+        proxyLua = new LuaProxy();
+        proxyLua.AddSearchPath(Application.persistentDataPath);
+        string lua = proxyLua.ReadFile(System.IO.Path.Combine(Application.streamingAssetsPath, "root.lua"));
+        proxyLua.UseRootCode(lua);
         proxyLua.DoAwake();
     }
 
@@ -53,7 +61,6 @@ public class RuntimeMVCS : RootMono
     {
         Debug.Log("---------------  OnEnable ------------------------");
         proxyXR.DoOnEnable();
-        setup();
         proxyLua.DoOnEnable();
     }
 
@@ -61,10 +68,10 @@ public class RuntimeMVCS : RootMono
     {
         Debug.Log("---------------  Start ------------------------");
         proxyXR.DoStart();
-
         mergeLanguageFiles();
-
         proxyLua.DoStart();
+        framework_.Setup();
+        modelBootloader.SaveOnFinishCallback(runRom);
         executeBootloader();
     }
 
@@ -79,7 +86,6 @@ public class RuntimeMVCS : RootMono
         Debug.Log("---------------  OnDisable ------------------------");
         proxyLua.DoOnDisable();
         proxyXR.DoOnDisable();
-        dismantle();
     }
 
     void OnDestroy()
@@ -88,24 +94,15 @@ public class RuntimeMVCS : RootMono
         proxyLua.DoOnDestroy();
         proxyXR.DoOnDestroy();
 
-        //framework.modelCenter.Cancel(SampleModel.NAME);
-        //framework.viewCenter.Cancel(SampleView.NAME);
-        //framework.controllerCenter.Cancel(SampleController.NAME);
-        //framework.serviceCenter.Cancel(SampleService.NAME);
-
-        foreach (Transform child in this.transform.Find("UIFacades"))
-        {
-            UIFacade facade = child.GetComponent<UIFacade>();
-            facade.Cancel();
-        }
-
-        release();
+        framework_.Dismantle();
+        cancelMVCS();
+        framework_.Release();
     }
 
     public void HandleUUID(string _uuid)
     {
         this.LogDebug("handle uuid: [{0}]", _uuid);
-        controllerBootloader.FinishCurrentStep();
+        modelBootloader.UpdateFinishCurrentStep();
     }
 
     private void executeBootloader()
@@ -114,7 +111,6 @@ public class RuntimeMVCS : RootMono
         // fetch uuid
         {
             BootloaderModel.Step step = new BootloaderModel.Step();
-            step.name = Constant.BootloaderStep.Fetch;
             step.length = 1;
             step.tip = "bootloader_step_fetch";
             step.onExecute = () =>
@@ -127,12 +123,11 @@ public class RuntimeMVCS : RootMono
         // load rom
         {
             BootloaderModel.Step step = new BootloaderModel.Step();
-            step.name = Constant.BootloaderStep.Load;
             step.length = 10;
             step.tip = "bootloader_step_load";
             step.onExecute = () =>
             {
-                this.StartCoroutine(load());
+                asyncLoad();
             };
             steps.Add(step);
         }
@@ -140,7 +135,6 @@ public class RuntimeMVCS : RootMono
         // run rom
         {
             BootloaderModel.Step step = new BootloaderModel.Step();
-            step.name = Constant.BootloaderStep.Run;
             step.length = 1;
             step.tip = "bootloader_step_run";
             step.onExecute = () =>
@@ -149,19 +143,23 @@ public class RuntimeMVCS : RootMono
                     Camera.main.clearFlags = CameraClearFlags.Skybox;
                 else
                     proxyXR.ResetCameraClearFlags();
-                controllerBootloader.FinishCurrentStep();
+                modelBootloader.UpdateFinishCurrentStep();
             };
             steps.Add(step);
         }
 
         modelBootloader.SaveSteps(steps);
-        controllerBootloader.Execute();
+        modelBootloader.UpdateExecute();
     }
 
-    private IEnumerator load()
+    private async void asyncLoad()
     {
-        yield return new WaitForSeconds(3);
-        controllerBootloader.FinishCurrentStep();
+        var operation = Task.Run(() =>
+        {
+            Thread.Sleep(3000);
+        });
+        await operation;
+        modelBootloader.UpdateFinishCurrentStep();
     }
 
     private void runRom()
@@ -173,14 +171,40 @@ public class RuntimeMVCS : RootMono
     {
         SystemLanguage systemLanguage =  Application.systemLanguage;
         string defaultLanguage = "zh_CN";
-        if(systemLanguage == SystemLanguage.English)
+        if (systemLanguage == SystemLanguage.English)
             defaultLanguage = "en_US";
 
         string language = PlayerPrefs.GetString(Constant.CustomSettings.Language, defaultLanguage);
-		Translator.language = language;
+        Translator.language = language;
 
         Translator.MergeFromResource("Translator/UI", true);
     }
 
+    private void registerMVCS()
+    {
+        // bootloader
+        var viewBootloader = new BootloaderView();
+        framework_.getStaticPipe().RegisterView(BootloaderView.NAME, viewBootloader);
+        var controllerBootloader = new BootloaderBatchController();
+        framework_.getStaticPipe().RegisterController(BootloaderBatchController.NAME, controllerBootloader);
+        modelBootloader = new BootloaderModel();
+        framework_.getStaticPipe().RegisterModel(BootloaderModel.NAME, modelBootloader);
+
+        //framework_.getStaticPipe().RegisterModel(SampleModel.NAME, new SampleModel());
+        //framework_.getStaticPipe().RegisterView(SampleView.NAME, new SampleView());
+        //framework_.getStaticPipe().RegisterController(SampleController.NAME, new SampleController());
+        //framework_.getStaticPipe().RegisterService(SampleService.NAME, new SampleService());
+    }
+
+    private void cancelMVCS()
+    {
+        framework_.getStaticPipe().CancelController(BootloaderBatchController.NAME);
+        framework_.getStaticPipe().CancelView(BootloaderView.NAME);
+        framework_.getStaticPipe().CancelModel(BootloaderModel.NAME);
+        //framework_.getStaticPipe().CancelModel(SampleModel.NAME);
+        //framework_.getStaticPipe().CancelView(SampleView.NAME);
+        //framework_.getStaticPipe().CancelController(SampleController.NAME);
+        //framework_.getStaticPipe().CancelService(SampleService.NAME);
+    }
 
 }

@@ -14,7 +14,7 @@ function uniStart()
 end
 
 function uniUpdate()
-    print('uniUpdate')
+    -- print('uniUpdate')
 end
 
 function uniDisable()

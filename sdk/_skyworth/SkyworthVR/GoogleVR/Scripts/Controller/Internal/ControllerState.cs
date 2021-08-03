@@ -30,11 +30,25 @@ namespace Gvr.Internal
         internal SvrControllerIndex svrControllerIndex = SvrControllerIndex.SVR_CONTROLLER_INDEX_RIGHT;
         internal GvrConnectionState connectionState = GvrConnectionState.Disconnected;
         internal GvrControllerApiStatus apiStatus = GvrControllerApiStatus.Unavailable;
-        internal Quaternion orientation = Quaternion.identity;
+        private Quaternion mOrientation = Quaternion.identity;
+        internal Quaternion orientation
+        {
+            get
+            {
+                return RecentQuaternion * mOrientation;
+            }
+            set
+            {
+                mOrientation = value;
+            }
+        }
+        internal Vector3 position = Vector3.zero;
         internal Vector3 gyro = Vector3.zero;
         internal Vector3 accel = Vector3.zero;
         internal bool isTouching = false;
         internal Vector2 touchPos = Vector2.zero;
+        internal float triggervalue = 0;
+        internal float gripvalue = 0;
         internal bool touchDown = false;
         internal bool touchUp = false;
         internal bool recentered = false;
@@ -55,6 +69,23 @@ namespace Gvr.Internal
         internal bool homeButtonUp = false;
         internal bool homeButtonState = false;
 
+        internal bool gripButtonDown = false;
+        internal bool gripButtonUp = false;
+        internal bool gripButtonState = false;
+
+        internal bool TouchPadUpButtonState = false;
+        internal bool TouchPadUpButtonDown = false;
+        internal bool TouchPadUpButtonUp = false;
+        internal bool TouchPadDownButtonState = false;
+        internal bool TouchPadDownButtonDown = false;
+        internal bool TouchPadDownButtonUp = false;
+        internal bool TouchPadLeftButtonState = false;
+        internal bool TouchPadLeftButtonDown = false;
+        internal bool TouchPadLeftButtonUp = false;
+        internal bool TouchPadRightButtonState = false;
+        internal bool TouchPadRightButtonDown = false;
+        internal bool TouchPadRightButtonUp = false;
+
         internal string errorDetails = "";
         internal IntPtr gvrPtr = IntPtr.Zero;
 
@@ -63,6 +94,9 @@ namespace Gvr.Internal
         public GvrControllerBatteryLevel BatteryLevel { get { return batteryLevel; } }
         internal int batteryValue;
         public int BatteryValue { get { return batteryValue; } }
+        public Svr.Controller.ControllerState mControllerState;
+        public Svr.Controller.ControllerState mpreControllerState;
+        private Quaternion RecentQuaternion = Quaternion.identity;
         public ControllerState(SvrControllerIndex index)
         {
             svrControllerIndex = index;
@@ -91,10 +125,31 @@ namespace Gvr.Internal
             homeButtonDown = other.homeButtonDown;
             homeButtonUp = other.homeButtonUp;
             homeButtonState = other.homeButtonState;
+            gripButtonDown = other.gripButtonDown;
+            gripButtonUp = other.gripButtonUp;
+            gripButtonState = other.gripButtonState;
+
+            TouchPadUpButtonState = other.TouchPadUpButtonState;
+            TouchPadUpButtonDown = other.TouchPadUpButtonDown;
+            TouchPadUpButtonUp = other.TouchPadUpButtonUp;
+            TouchPadDownButtonState = other.TouchPadDownButtonState;
+            TouchPadDownButtonDown = other.TouchPadDownButtonDown;
+            TouchPadDownButtonUp = other.TouchPadDownButtonUp;
+            TouchPadLeftButtonState = other.TouchPadLeftButtonState;
+            TouchPadLeftButtonDown = other.TouchPadLeftButtonDown;
+            TouchPadLeftButtonUp = other.TouchPadLeftButtonUp;
+            TouchPadRightButtonState = other.TouchPadRightButtonState;
+            TouchPadRightButtonDown = other.TouchPadRightButtonDown;
+            TouchPadRightButtonUp = other.TouchPadRightButtonUp;
+
+
             errorDetails = other.errorDetails;
             gvrPtr = other.gvrPtr;
             isCharging = other.isCharging;
             batteryLevel = other.batteryLevel;
+
+            triggervalue = other.triggervalue;
+            gripvalue = other.gripvalue;
         }
 
         /// Resets the transient state (the state variables that represent events, and which are true
@@ -112,6 +167,24 @@ namespace Gvr.Internal
             homeButtonUp = false;
             triggerButtonDown = false;
             triggerButtonUp = false;
+            mpreControllerState = mControllerState;
+            mControllerState = null;
+            connectionState = GvrConnectionState.Disconnected;
+
+            position = Vector3.zero;
+        }
+
+        public void Recent()
+        {
+            if (Vector3.Dot(Vector3.up, Quaternion.Euler(GvrViewer.Instance.HeadPose.Orientation.eulerAngles.x, 0, 0) * Vector3.forward) > 0
+            && Vector3.Angle(Quaternion.Euler(GvrViewer.Instance.HeadPose.Orientation.eulerAngles.x, 0, 0) * Vector3.forward, Vector3.forward) > 45)
+            {
+                RecentQuaternion = Quaternion.Inverse(mOrientation);
+            }
+            else
+            {
+                RecentQuaternion = Quaternion.Inverse(Quaternion.Euler(0, mOrientation.eulerAngles.y, 0));
+            }
         }
     }
 }

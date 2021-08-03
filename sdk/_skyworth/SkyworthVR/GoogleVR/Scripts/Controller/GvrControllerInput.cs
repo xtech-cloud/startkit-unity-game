@@ -17,6 +17,11 @@ using System;
 using System.Collections;
 
 using Gvr.Internal;
+using System.Threading;
+using System.Collections.Generic;
+#if UNITY_2019_3_OR_NEWER
+using UnityEngine.XR;
+#endif
 
 /// Represents the controller's current connection state.
 /// All values and semantics below (except for Error) are
@@ -128,9 +133,9 @@ public class GvrControllerInput : MonoBehaviour
     private static GvrControllerInput instance;
     private static IControllerProvider controllerProvider;
 
-    private ControllerState controllerStateRight = new ControllerState( SvrControllerIndex.SVR_CONTROLLER_INDEX_RIGHT);
-    private ControllerState controllerStateLeft = new ControllerState( SvrControllerIndex.SVR_CONTROLLER_INDEX_LEFT);
-    private ControllerState controllerStateHead = new ControllerState( SvrControllerIndex.SVR_CONTROLLER_INDEX_HEAD);
+    private ControllerState controllerStateRight = new ControllerState(SvrControllerIndex.SVR_CONTROLLER_INDEX_RIGHT);
+    private ControllerState controllerStateLeft = new ControllerState(SvrControllerIndex.SVR_CONTROLLER_INDEX_LEFT);
+    private ControllerState controllerStateHead = new ControllerState(SvrControllerIndex.SVR_CONTROLLER_INDEX_HEAD);
     public static ControllerState GetControllerState(SvrControllerState index)
     {
 
@@ -141,7 +146,7 @@ public class GvrControllerInput : MonoBehaviour
         instance.Update();
         switch (index)
         {
-         
+
             case SvrControllerState.GvrController:
                 return instance.controllerStateRight;
             case SvrControllerState.NoloLeftContoller:
@@ -158,7 +163,7 @@ public class GvrControllerInput : MonoBehaviour
     {
         get
         {
-            if (Svr.SvrSetting.GetNoloConnected)
+            if ((svrControllerState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
             {
                 switch (Svr.SvrSetting.NoloHandedness)
                 {
@@ -170,9 +175,13 @@ public class GvrControllerInput : MonoBehaviour
                         return controllerStateRight;
                 }
             }
-            else
+            else if ((svrControllerState & SvrControllerState.GvrController )!= 0)
             {
                 return controllerStateRight;
+            }
+            else
+            {
+                return controllerStateHead;
             }
         }
     }
@@ -204,7 +213,7 @@ public class GvrControllerInput : MonoBehaviour
         set
         {
             if (mGvrPointerEnable == value) return;
-            Svr.SvrLog.Log("GvrPointerEnable = "+value);
+            Debug.Log("GvrPointerEnable = " + value);
             if (OnGvrPointerEnable != null) OnGvrPointerEnable(value);
             mGvrPointerEnable = value;
         }
@@ -294,7 +303,7 @@ public class GvrControllerInput : MonoBehaviour
     //    {
     //        if (instance == null)
     //        {
-                
+
     //            return Quaternion.identity;
     //        }
     //        instance.Update();
@@ -333,14 +342,11 @@ public class GvrControllerInput : MonoBehaviour
         switch (svrControllerState)
         {
             case SvrControllerState.NoloLeftContoller:
-                return instance.controllerStateLeft.accel;
+                return instance.controllerStateLeft.position;
             case SvrControllerState.NoloRightContoller:
-                return instance.controllerStateRight.accel;
+                return instance.controllerStateRight.position;
             case SvrControllerState.NoloHead:
-                if (instance.controllerStateHead.connectionState == GvrConnectionState.Connected)
-                    return instance.controllerStateHead.accel;
-                else
-                    return Vector3.zero;
+                return instance.controllerStateHead.position;
             default:
                 return Vector3.zero;
         }
@@ -400,7 +406,7 @@ public class GvrControllerInput : MonoBehaviour
             instance.Update();
             //if ((SvrState & GetTargetNolo()) != 0)
             //{
-                
+
             //    switch (Svr.SvrSetting.NoloHandedness)
             //    {
             //        case Svr.SvrNoloHandedness.Left:
@@ -497,7 +503,7 @@ public class GvrControllerInput : MonoBehaviour
             instance.Update();
             //if ((SvrState & GetTargetNolo()) != 0)
             //{
-                
+
             //    switch (Svr.SvrSetting.NoloHandedness)
             //    {
             //        case Svr.SvrNoloHandedness.Left:
@@ -509,6 +515,29 @@ public class GvrControllerInput : MonoBehaviour
             return instance.controllerState.touchPos;
         }
     }
+    public static Vector2 GetTouchPos(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return new Vector2(0.5f, 0.5f);
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.touchPos;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.touchPos;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.touchPos;
+            case SvrControllerState.NoloHead:
+                return instance.controllerStateHead.touchPos;
+            default:
+                return new Vector2(0.5f, 0.5f);
+        }
+    }
+
+
 
     private static Vector2 ConverTOGvrPos(Vector2 noloPos)
     {
@@ -554,6 +583,7 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
+
             return instance.controllerState.recentered;
         }
     }
@@ -568,26 +598,26 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.TouchPad);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.TouchPad);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.TouchPad);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.TouchPad);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
             if (SvrState == SvrControllerState.None)
-                return GetTouch();
+                return SVR.AtwAPI.ClickButton() || GetTouch();
             return instance.controllerState.clickButtonState;
         }
     }
-    
+
     /// Returns true in the frame the user starts pressing down the click button.
     /// (touchpad button).  Every ClickButtonDown event is
     /// guaranteed to be followed by exactly one ClickButtonUp event in a later frame.
@@ -601,22 +631,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonDown(NoloButtonID.TouchPad);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonDown(NoloButtonID.TouchPad);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonDown(NoloButtonID.TouchPad);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonDown(NoloButtonID.TouchPad);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
             if (SvrState == SvrControllerState.None)
-                return GetTouchDown();
+                return SVR.AtwAPI.ClickButtonDown() || GetTouchDown();
             return instance.controllerState.clickButtonDown;
         }
     }
@@ -634,22 +664,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.TouchPad);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.TouchPad);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.TouchPad);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.TouchPad);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
             if (SvrState == SvrControllerState.None)
-                return GetTouchUp();
+                return SVR.AtwAPI.ClickButtonUp() || GetTouchUp();
             return instance.controllerState.clickButtonUp;
         }
     }
@@ -663,20 +693,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.Trigger);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.Trigger);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.Trigger);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.Trigger);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
+            if (SvrState == SvrControllerState.None)
+                return false;
             return instance.controllerState.triggerButtonState;
         }
     }
@@ -694,20 +726,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonDown(NoloButtonID.Trigger);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonDown(NoloButtonID.Trigger);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonDown(NoloButtonID.Trigger);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonDown(NoloButtonID.Trigger);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
+            if (SvrState == SvrControllerState.None)
+                return false;
             return instance.controllerState.triggerButtonDown;
         }
     }
@@ -725,20 +759,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.Trigger);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.Trigger);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.Trigger);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.Trigger);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
+            if (SvrState == SvrControllerState.None)
+                return false;
             return instance.controllerState.triggerButtonUp;
         }
     }
@@ -753,21 +789,200 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.Menu);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.Menu);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.Menu);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.Menu);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
+            if (SvrState == SvrControllerState.None)
+                return false;
             return instance.controllerState.appButtonState;
+        }
+    }
+    public static bool GetAppButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.appButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.appButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.appButtonState;
+            default:
+                return false;
+        }
+    }
+    public static bool GetClickButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.clickButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.clickButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.clickButtonState;
+            default:
+                return false;
+        }
+    }
+    public static bool GetTriggerButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.triggerButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.triggerButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.triggerButtonState;
+            default:
+                return false;
+        }
+    }
+
+    public static bool GetHomeButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.homeButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.homeButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.homeButtonState;
+            default:
+                return false;
+        }
+    }
+
+    public static bool GetGripButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.gripButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.gripButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.gripButtonState;
+            default:
+                return false;
+        }
+    }
+
+    public static bool GetTouchPadUpButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.TouchPadUpButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.TouchPadUpButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.TouchPadUpButtonState;
+            default:
+                return false;
+        }
+    }
+
+    public static bool GetTouchPadDownButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.TouchPadDownButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.TouchPadDownButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.TouchPadDownButtonState;
+            default:
+                return false;
+        }
+    }
+
+    public static bool GetTouchPadLeftButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.TouchPadLeftButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.TouchPadLeftButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.TouchPadLeftButtonState;
+            default:
+                return false;
+        }
+    }
+
+    public static bool GetTouchPadRightButton(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return false;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.TouchPadRightButtonState;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.TouchPadRightButtonState;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.TouchPadRightButtonState;
+            default:
+                return false;
         }
     }
 
@@ -784,20 +999,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonDown(NoloButtonID.Menu);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonDown(NoloButtonID.Menu);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonDown(NoloButtonID.Menu);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonDown(NoloButtonID.Menu);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
+            if (SvrState == SvrControllerState.None)
+                return false;
             return instance.controllerState.appButtonDown;
         }
     }
@@ -815,20 +1032,22 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.Menu);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.Menu);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.Menu);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.Menu);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
+            if (SvrState == SvrControllerState.None)
+                return false;
             return instance.controllerState.appButtonUp;
         }
     }
@@ -857,8 +1076,6 @@ public class GvrControllerInput : MonoBehaviour
             //                }
             //            }
             //#endif
-            if (SvrState == SvrControllerState.None)
-                return SVR.AtwAPI.HomeClick();
             return instance.controllerState.homeButtonDown;
         }
     }
@@ -873,20 +1090,20 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.System);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.System);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonPressed(NoloButtonID.System);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonPressed(NoloButtonID.System);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
             return instance.controllerState.homeButtonState;
         }
     }
@@ -899,24 +1116,24 @@ public class GvrControllerInput : MonoBehaviour
                 return false;
             }
             instance.Update();
-//#if NOLOSDK
-//            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-//            {
-//                switch (Svr.SvrSetting.NoloHandedness)
-//                {
-//                    case Svr.SvrNoloHandedness.Left:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.System);
-//                    case Svr.SvrNoloHandedness.Right:
-//                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.System);
-//                    default:
-//                        break;
-//                }
-//            }
-//#endif
+            //#if NOLOSDK
+            //            if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+            //            {
+            //                switch (Svr.SvrSetting.NoloHandedness)
+            //                {
+            //                    case Svr.SvrNoloHandedness.Left:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.LeftController).GetNoloButtonUp(NoloButtonID.System);
+            //                    case Svr.SvrNoloHandedness.Right:
+            //                        return NoloVR_Controller.GetDevice(NoloDeviceType.RightController).GetNoloButtonUp(NoloButtonID.System);
+            //                    default:
+            //                        break;
+            //                }
+            //            }
+            //#endif
             return instance.controllerState.homeButtonUp;
         }
     }
-    public static bool GetTouchDown()
+    private static bool GetTouchDown()
     {
         if (AndroidInput.touchCountSecondary > 0)
         {
@@ -929,7 +1146,7 @@ public class GvrControllerInput : MonoBehaviour
         }
     }
 
-    public static bool GetTouchUp()
+    private static bool GetTouchUp()
     {
         if (AndroidInput.touchCountSecondary > 0)
         {
@@ -942,7 +1159,7 @@ public class GvrControllerInput : MonoBehaviour
         }
     }
 
-    public static bool GetTouch()
+    private static bool GetTouch()
     {
         if (AndroidInput.touchCountSecondary > 0)
         {
@@ -1014,7 +1231,47 @@ public class GvrControllerInput : MonoBehaviour
             return instance.controllerState.batteryLevel;
         }
     }
+    public static GvrControllerBatteryLevel GetBatteryLevel(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return GvrControllerBatteryLevel.Error;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
+            case SvrControllerState.GvrController:
+                return instance.controllerStateRight.batteryLevel;
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.batteryLevel;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.batteryLevel;
+            case SvrControllerState.NoloHead:
+                return instance.controllerStateHead.batteryLevel;
+            default:
+                return GvrControllerBatteryLevel.Error;
+        }
+    }
+    public static float GetTriggerValue(SvrControllerState svrControllerState)
+    {
+        if (instance == null)
+        {
+            return 0;
+        }
+        instance.Update();
+        switch (svrControllerState)
+        {
 
+            case SvrControllerState.NoloLeftContoller:
+                return instance.controllerStateLeft.triggervalue;
+            case SvrControllerState.NoloRightContoller:
+                return instance.controllerStateRight.triggervalue;
+
+            default:
+                return 0;
+        }
+    }
+    private Thread CurrentGameThread;
     void Awake()
     {
         if (instance != null)
@@ -1026,17 +1283,20 @@ public class GvrControllerInput : MonoBehaviour
         }
         instance = this;
 
-        Svr.Controller.SvrController.InitController();
+        //Svr.Controller.SvrControllerV2.InitController();
 
         if (controllerProvider == null)
         {
             controllerProvider = ControllerProviderFactory.CreateControllerProvider(this);
         }
+        controllerProvider.OnResume();
         // Keep screen on here, since GvrController must be in any GVR scene in order to enable
         // controller capabilities.
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
-        
+        CurrentGameThread = Thread.CurrentThread;
+        //Debug.Log("CurrentGameThread:"+ CurrentGameThread.ManagedThreadId);
+
     }
     private bool m_isReventerd = false;
     private Quaternion m_targtQuaternion = Quaternion.identity;
@@ -1044,32 +1304,57 @@ public class GvrControllerInput : MonoBehaviour
     //private ControllerState m_PreviousState = new ControllerState();
     void Update()
     {
-        SVR.AtwAPI.BeginTrace("input-update");
-        if (lastUpdatedFrameCount != Time.frameCount)
+        
+        if (lastUpdatedFrameCount != Time.frameCount && Thread.CurrentThread == CurrentGameThread)
         {
+            
+            //SVR.AtwAPI.BeginTrace("input-update");
+
+
             // The controller state must be updated prior to any function using the
             // controller API to ensure the state is consistent throughout a frame.
             lastUpdatedFrameCount = Time.frameCount;
 
-            Svr.Controller.SvrController.CallBegin();
-            //GvrConnectionState oldState = State;
+            //Svr.Controller.ControllerState[] controllerState = Svr.Controller.SvrController.CallBegin();
+
+            //controllerStateRight.ClearTransientState();
+            //controllerStateLeft.ClearTransientState();
+            //controllerStateHead.ClearTransientState();
+            //foreach (var item in controllerState)
+            //{
+            //    if (controllerProvider != null && item != null && item.connectionState == Svr.Controller.ConnectStatus.Connected)
+            //    {
+            //        switch (item.handness)
+            //        {
+            //            case Svr.Controller.Handness.Right:
+            //                controllerStateRight.mControllerState = item;
+            //                controllerProvider.ReadState(controllerStateRight);
+            //                break;
+            //            case Svr.Controller.Handness.Left:
+            //                controllerStateLeft.mControllerState = item;
+            //                controllerProvider.ReadState(controllerStateLeft);
+            //                break;
+            //            case Svr.Controller.Handness.Head:
+            //                controllerStateHead.mControllerState = item;
+            //                controllerProvider.ReadState(controllerStateHead);
+            //                break;
+            //            default:
+            //                break;
+            //        }
+            //    }
+            //}
+            SVR.AtwAPI.UpdateClickState();
+            controllerProvider.ReadState(controllerStateLeft, controllerStateRight, controllerStateHead);
             SvrControllerState oldSvrState = SvrState;
 
-            //UnityEngine.Profiling.Profiler.BeginSample("1");
-            if (controllerProvider != null)
-            {
-                controllerProvider.ReadState(controllerStateRight);
-                controllerProvider.ReadState(controllerStateLeft);
-                controllerProvider.ReadState(controllerStateHead);
-                //Svr.SvrLog.Log("controllerState:" + controllerStateRight.connectionState + "," + controllerStateLeft.connectionState + "," + controllerStateHead.connectionState);
-            }
+            //if (controllerProvider != null)
+            //{
+            //    controllerProvider.ReadState(controllerStateRight);
+            //    controllerProvider.ReadState(controllerStateLeft);
+            //    controllerProvider.ReadState(controllerStateHead);
+            //}
 
-            //UnityEngine.Profiling.Profiler.EndSample();
-            //UnityEngine.Profiling.Profiler.BeginSample("2");
             UpdateTouchPosCentered();
-
-            
-
             mSvrState = ReadSvrContollerState();
 
 #if UNITY_EDITOR
@@ -1080,25 +1365,11 @@ public class GvrControllerInput : MonoBehaviour
             }
 #endif  // UNITY_EDITOR
 
-            //if (OnStateChanged != null && State != oldState)
-            //{
-            //    OnStateChanged(State, oldState);
-            //}
-            //UnityEngine.Profiling.Profiler.EndSample();
-            //UnityEngine.Profiling.Profiler.BeginSample("3");
+
             if (OnConterollerChanged != null && SvrState != oldSvrState)
             {
                 OnConterollerChanged(SvrState, oldSvrState);
-                //if ((SvrState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
-                //{
-                //    //Have Nolo
-                //    Svr.SvrSetting.SetNoloConnected(true);
-                //}
-                //else
-                //{
-                //    //Nolo DisConnected
-                //    Svr.SvrSetting.SetNoloConnected(false);
-                //}
+
             }
 
             if (OnControllerInputUpdated != null)
@@ -1110,37 +1381,131 @@ public class GvrControllerInput : MonoBehaviour
             {
                 OnPostControllerInputUpdated();
             }
-            //UnityEngine.Profiling.Profiler.EndSample();
+            if (SvrState == SvrControllerState.None)
+            {
+                controllerStateHead.recentered = SVR.AtwAPI.UnityRecent();
+                controllerStateHead.homeButtonDown = SVR.AtwAPI.HomeClick();
+                if (controllerStateHead.recentered )
+                {
+                    RecentHMD();
+                }
+            }
+            if ((SvrState & SvrControllerState.GvrController) != 0 && controllerStateRight.recentered)
+            {
+                RecentHMD();
+                controllerStateRight.Recent();
 
+            }
 
+            if ((svrControllerState & (SvrControllerState.NoloLeftContoller | SvrControllerState.NoloRightContoller)) != 0)
+                NoloRecenter();
+
+            if (SvrState != SvrControllerState.None && GetTouchDown() && Svr.SvrSetting.IsVR9Device)
+            {
+                SVR.AtwAPI.showHand();
+            }
+            //SVR.AtwAPI.EndTrace();
         }
-
-        SVR.AtwAPI.EndTrace();
     }
+    public static void RecenterController()
+    {
+        if ((SvrState & SvrControllerState.GvrController) != 0)
+        {
+            instance.controllerStateRight.Recent();
+        }
+    }
+    private void RecentHMD()
+    {
+        if (GvrViewer.SvrXRLoader)
+        {
+#if UNITY_2019_3_OR_NEWER && SVR
+            var inputsystem = new List<XRInputSubsystem>();
+            SubsystemManager.GetInstances(inputsystem);
+            for (int i = 0; i < inputsystem.Count; i++)
+            {
+                bool statue = inputsystem[i].TryRecenter();
+            }
+#endif
+        }
+    }
+
+#region NOLO RECENTER
+    //recenter about
+    private int leftcontrollerRecenter_PreFrame = -1;
+    private int rightcontrollerRecenter_PreFrame = -1;
+    private int recenterSpacingFrame = 20;
+
+    void NoloRecenter()
+    {
+        //leftcontroller double click system button
+        if (GetControllerState(SvrControllerState.NoloLeftContoller).homeButtonUp
+            || GetControllerState(SvrControllerState.NoloRightContoller).homeButtonUp)
+        {
+            if (Time.frameCount - leftcontrollerRecenter_PreFrame <= recenterSpacingFrame)
+            {
+
+                controllerState.recentered = true;
+                leftcontrollerRecenter_PreFrame = -1;
+            }
+            else
+            {
+                leftcontrollerRecenter_PreFrame = Time.frameCount;
+                controllerState.recentered = false;
+            }
+        }
+        else
+            controllerState.recentered = false;
+
+    }
+#endregion !NOLO RECENTER
+    private static SvrControllerState svrControllerState = SvrControllerState.None;
     private SvrControllerState ReadSvrContollerState()
     {
-        SvrControllerState svrControllerState = SvrControllerState.None;
-
         if (Svr.SvrSetting.GetNoloConnected)
         {
-            
+            svrControllerState |= SvrControllerState.NoloHead;
             if (controllerStateLeft.connectionState == GvrConnectionState.Connected)
             {
-                svrControllerState |= SvrControllerState.NoloLeftContoller;
-                Svr.SvrSetting.SetNoloHandedness(Svr.SvrNoloHandedness.Left);
+                if ((svrControllerState & SvrControllerState.NoloLeftContoller) == 0)
+                {
+                    if ((svrControllerState & SvrControllerState.NoloRightContoller) == 0)
+                        Svr.SvrSetting.SetNoloHandedness(Svr.SvrNoloHandedness.Left);
+                    svrControllerState |= SvrControllerState.NoloLeftContoller;
+                }
+            }
+            else
+            {
+                if ((svrControllerState & SvrControllerState.NoloLeftContoller) != 0)
+                {
+                    Svr.SvrSetting.SetNoloHandedness(Svr.SvrNoloHandedness.Right);
+                    svrControllerState ^= SvrControllerState.NoloLeftContoller;
+                }
             }
 
             if (controllerStateRight.connectionState == GvrConnectionState.Connected)
             {
-                svrControllerState |= SvrControllerState.NoloRightContoller;
-                Svr.SvrSetting.SetNoloHandedness(Svr.SvrNoloHandedness.Right);
+                if ((svrControllerState & SvrControllerState.NoloRightContoller) == 0)
+                {
+                    svrControllerState |= SvrControllerState.NoloRightContoller;
+                    Svr.SvrSetting.SetNoloHandedness(Svr.SvrNoloHandedness.Right);
+                }
+            }
+            else
+            {
+                if ((svrControllerState & SvrControllerState.NoloRightContoller) != 0)
+                {
+                    Svr.SvrSetting.SetNoloHandedness(Svr.SvrNoloHandedness.Left);
+                    svrControllerState ^= SvrControllerState.NoloRightContoller;
+                }
             }
         }
         else
         {
+            svrControllerState = SvrControllerState.None;
             if (controllerStateRight.connectionState == GvrConnectionState.Connected)
                 svrControllerState |= SvrControllerState.GvrController;
         }
+
         return svrControllerState;
     }
     void OnDestroy()
@@ -1159,6 +1524,12 @@ public class GvrControllerInput : MonoBehaviour
         {
             controllerProvider.OnResume();
         }
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (null == controllerProvider) return;
+        controllerProvider.OnQuit();
     }
 
     private void UpdateTouchPosCentered()

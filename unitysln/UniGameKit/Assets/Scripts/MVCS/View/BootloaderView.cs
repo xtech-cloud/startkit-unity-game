@@ -2,31 +2,26 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-using XTC.MVCS;
+using XTC.oelMVCS;
 using XTC.Text;
 
 public class BootloaderView : View
 {
 	public const string NAME = "BootloaderView";
 
-	private BootloaderUI uiBootloader{
-		get{
-			return (UIFacade.Find(BootloaderFacade.NAME) as BootloaderFacade).uiBootloader;
-		}
-	}
+    private BootloaderFacade facade_ {get;set;}
+
+    protected override void preSetup()
+    {
+        facade_ = FacadeStore.Find(BootloaderFacade.NAME) as BootloaderFacade; 
+        Debug.Log(facade_);
+    }
 
 	protected override void setup()
 	{
-		uiBootloader.root.gameObject.SetActive(true);
-		uiBootloader.txtTip.text = "";
-	}
-
-	protected override void bindEvents()
-	{
-	}
-
-	protected override void unbindEvents()
-	{
+        getLogger().Info("setup BootloaderView");
+		facade_.ui.root.gameObject.SetActive(true);
+		facade_.ui.txtTip.text = "";
 	}
 
 	protected override void dismantle()
@@ -36,16 +31,16 @@ public class BootloaderView : View
 
 	public void SetActive(bool _active)
 	{
-		uiBootloader.root.SetActive(_active);
+		facade_.ui.root.SetActive(_active);
 	}
 
 	public void RefreshTip(string _tip)
     {
-		uiBootloader.txtTip.text = Translator.Translate(_tip);
+		facade_.ui.txtTip.text = Translator.Translate(_tip);
     }
 
 	public void RefreshProgress(float _value)
     {
-		uiBootloader.txtProgress.text = ((int)(_value *100)).ToString();
+		facade_.ui.txtProgress.text = ((int)(_value *100)).ToString();
     }
 }

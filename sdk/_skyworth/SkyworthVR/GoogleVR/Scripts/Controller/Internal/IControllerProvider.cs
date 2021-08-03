@@ -32,8 +32,11 @@ namespace Gvr.Internal
         /// Notifies the controller provider that the application has resumed.
         void OnResume();
 
+        void OnQuit();
         /// Reads the controller's current state and stores it in outState.
         void ReadState(ControllerState outState);
+        void ReadState(ControllerState leftState, ControllerState rightState, ControllerState headState);
+
 
     }
 }

@@ -29,7 +29,15 @@ namespace Gvr.Internal {
     }
     public void OnPause() {}
     public void OnResume() {}
-  }
+
+        public void OnQuit()
+        {
+        }
+
+        public void ReadState(ControllerState leftState, ControllerState rightState, ControllerState headState)
+        {
+        }
+    }
 }
 /// @endcond
 

@@ -174,7 +174,16 @@ namespace Gvr.Internal {
         state.recentered = true;
       }
     }
-  }
+
+        public void OnQuit()
+        {
+        }
+
+        public void ReadState(ControllerState leftState, ControllerState rightState, ControllerState headState)
+        {
+            ReadState(rightState);
+        }
+    }
 }
 /// @endcond
 

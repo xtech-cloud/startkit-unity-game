@@ -76,7 +76,16 @@ namespace Gvr.Internal {
       emulatorControllerProvider.OnResume();
       mouseControllerProvider.OnResume();
     }
-  }
+
+        public void OnQuit()
+        {
+        }
+
+        public void ReadState(ControllerState leftState, ControllerState rightState, ControllerState headState)
+        {
+            ReadState(rightState);
+        }
+    }
 }
 
 #endif  // UNITY_EDITOR

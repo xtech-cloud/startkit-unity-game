@@ -201,5 +201,14 @@ namespace Gvr.Internal {
       state.appButtonUp = false;
       ClearTouchPos();
     }
-  }
+
+        public void OnQuit()
+        {
+        }
+
+        public void ReadState(ControllerState leftState, ControllerState rightState, ControllerState headState)
+        {
+            ReadState(rightState);
+        }
+    }
 }

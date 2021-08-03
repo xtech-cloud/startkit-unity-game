@@ -18,6 +18,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build;
 using System.Linq;
+using System.IO;
 
 #if UNITY_IOS
 using UnityEditor.iOS.Xcode;
@@ -100,8 +101,56 @@ class GvrBuildProcessor : IPreprocessBuild, IPostprocessBuild
                 Debug.LogError(IOS_MISSING_GVR_SDK_ERROR_MESSAGE);
             }
         }
-    }
 
+        if (target == BuildTarget.Android)
+        {
+            Debug.Log("PlayerSettings.SplashScreen.show:"+ PlayerSettings.SplashScreen.show);
+           
+
+            string configpath = Application.dataPath + "/Plugins/Android/assets/splash.cfg";
+            if (!Directory.Exists(Application.dataPath + "/Plugins")) Directory.CreateDirectory(Application.dataPath + "/Plugins");
+            if (!Directory.Exists(Application.dataPath + "/Plugins/Android")) Directory.CreateDirectory(Application.dataPath + "/Plugins/Android");
+            if (!Directory.Exists(Application.dataPath + "/Plugins/Android/assets")) Directory.CreateDirectory(Application.dataPath + "/Plugins/Android/assets");
+            string[] linesText = File.ReadAllLines(configpath);
+            if (File.Exists(configpath))
+            {
+                File.Delete(configpath);
+            }
+            StreamWriter sw = File.CreateText(configpath);
+#if UNITY_2019_3_OR_NEWER
+#if SVR_LEGACY
+            sw.WriteLine("UNITY_USE_SPLASH=0");
+#else
+            if (PlayerSettings.SplashScreen.show)
+            {
+                sw.WriteLine("UNITY_USE_SPLASH=1");
+            }
+            else
+            {
+                sw.WriteLine("UNITY_USE_SPLASH=0");
+            }
+#endif
+#else
+            sw.WriteLine("UNITY_USE_SPLASH=0");
+#endif
+
+            if (linesText.Length > 1)
+                sw.WriteLine(linesText[1]);
+            sw.Close();
+
+        }
+    }
+   
+    private string GetResourcePath()
+    {
+        var monos = MonoScript.FromScriptableObject(ScriptableObject.CreateInstance(typeof(GvrEditorSettings)));
+        var path = AssetDatabase.GetAssetPath(monos);
+        path = path.Substring(0, path.LastIndexOf("/"));
+        path = path.Substring(0, path.LastIndexOf("/"));
+        path = path + "/Plugins/Android/assets/splash.cfg";
+        
+        return path;
+    }
 #if UNITY_2018_1_OR_NEWER
   public void OnPostprocessBuild(BuildReport report) {
     OnPostprocessBuild(report.summary.platform, report.summary.outputPath);
